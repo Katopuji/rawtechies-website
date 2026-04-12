@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RawTechies — Building Digital Sri Lanka</title>
+<meta name="description" content="RawTechies is a Sri Lanka-based digital company building powerful platforms for Sri Lankans.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --black:#060608;--dark:#0e0e12;--card:#13131a;--border:#1e1e28;
+  --gold:#d4a017;--gold2:#f0c040;--gold3:rgba(212,160,23,0.08);
+  --white:#f0ede8;--muted:#6b6b60;--teal:#0e7c7b;--red:#c0392b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Barlow',sans-serif;background:var(--black);color:var(--white);overflow-x:hidden;cursor:none;}
+
+/* ── 3D CANVAS ── */
+#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+
+/* ── CUSTOM CURSOR ── */
+.cursor{position:fixed;pointer-events:none;z-index:9999;mix-blend-mode:difference;}
+.cur-dot{width:8px;height:8px;background:var(--gold);border-radius:50%;transform:translate(-50%,-50%);}
+.cur-ring{width:40px;height:40px;border:1px solid rgba(212,160,23,0.5);border-radius:50%;transform:translate(-50%,-50%);transition:width .3s,height .3s,opacity .3s;}
+body:hover .cur-ring.big{width:60px;height:60px;}
+
+/* ── NOISE OVERLAY ── */
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:1;opacity:.5;}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 48px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(to bottom,rgba(6,6,8,.97),transparent);}
+.nav-logo{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:4px;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:3px;}
+.nav-logo span{color:var(--gold);}
+.nav-links{display:flex;gap:36px;}
+.nav-links a{font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .2s;}
+.nav-links a:hover{color:var(--gold);}
+@media(max-width:768px){.nav-links{display:none;} nav{padding:16px 24px;}}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 48px 80px;position:relative;z-index:2;}
+.hero-eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:28px;display:flex;align-items:center;gap:14px;opacity:0;animation:fadeUp .8s ease .2s forwards;}
+.hero-eyebrow::before{content:'';width:48px;height:1px;background:var(--gold);}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(72px,11vw,140px);line-height:.92;letter-spacing:3px;margin-bottom:36px;opacity:0;animation:fadeUp .8s ease .4s forwards;}
+.hero h1 .line-gold{color:var(--gold);display:block;}
+.hero h1 .line-muted{color:var(--muted);display:block;font-size:.48em;letter-spacing:8px;}
+.hero-desc{font-size:17px;font-weight:300;color:var(--muted);max-width:500px;line-height:1.8;margin-bottom:44px;opacity:0;animation:fadeUp .8s ease .6s forwards;}
+.hero-desc strong{color:var(--white);font-weight:500;}
+.hero-cta{display:flex;gap:18px;flex-wrap:wrap;opacity:0;animation:fadeUp .8s ease .8s forwards;}
+.btn-gold{font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;background:var(--gold);color:var(--black);padding:16px 36px;border:none;cursor:none;font-weight:700;text-decoration:none;display:inline-block;transition:all .25s;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-3px);box-shadow:0 12px 32px rgba(212,160,23,.25);}
+.btn-wire{font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;background:transparent;color:var(--white);padding:15px 36px;border:1px solid var(--border);cursor:none;text-decoration:none;display:inline-block;transition:all .25s;}
+.btn-wire:hover{border-color:var(--gold);color:var(--gold);}
+.hero-scroll{position:absolute;bottom:44px;left:48px;font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:14px;opacity:0;animation:fadeUp .6s ease 1.2s forwards;z-index:2;}
+.hero-scroll::after{content:'';width:1px;height:56px;background:linear-gradient(to bottom,var(--muted),transparent);}
+
+/* ── 3D FLOATING BADGE ── */
+.hero-badge-3d{position:absolute;right:5%;top:50%;transform:translateY(-50%);perspective:800px;z-index:2;opacity:0;animation:fadeIn 1.2s ease 1s forwards;}
+@media(max-width:900px){.hero-badge-3d{display:none;}}
+.badge-inner{width:220px;height:220px;background:var(--card);border:1px solid var(--border);transform-style:preserve-3d;animation:rotateBadge 12s linear infinite;display:flex;align-items:center;justify-content:center;position:relative;}
+.badge-inner::before{content:'';position:absolute;inset:-1px;background:linear-gradient(135deg,var(--gold),transparent,var(--teal));opacity:.25;animation:rotateBadge 6s linear infinite reverse;}
+.badge-face{font-family:'Bebas Neue',sans-serif;text-align:center;z-index:1;}
+.badge-face .big{font-size:52px;letter-spacing:4px;color:var(--gold);line-height:1;}
+.badge-face .sub{font-size:10px;letter-spacing:4px;color:var(--muted);text-transform:uppercase;}
+@keyframes rotateBadge{0%{transform:rotateY(0deg) rotateX(8deg);}100%{transform:rotateY(360deg) rotateX(8deg);}}
+
+/* ── STATS BAR ── */
+.stats-bar{background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:32px 48px;display:flex;justify-content:space-around;flex-wrap:wrap;gap:24px;position:relative;z-index:2;}
+.stats-bar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.stat-item{text-align:center;}
+.stat-item .num{font-family:'Bebas Neue',sans-serif;font-size:44px;color:var(--gold);letter-spacing:3px;line-height:1;}
+.stat-item .lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:6px;}
+
+/* ── SECTIONS ── */
+section,div.full-section{padding:100px 48px;max-width:1140px;margin:0 auto;position:relative;z-index:2;}
+@media(max-width:768px){section,div.full-section{padding:64px 24px;}}
+.sec-tag{font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:14px;}
+.sec-tag::before{content:'//';opacity:.35;}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,6vw,76px);letter-spacing:2px;line-height:1;margin-bottom:20px;}
+.sec-title span{color:var(--gold);}
+.gold-bar{width:64px;height:2px;background:var(--gold);margin-bottom:48px;}
+
+/* ── ABOUT ── */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;}
+@media(max-width:768px){.about-grid{grid-template-columns:1fr;gap:40px;}}
+.about-text p{color:var(--muted);font-size:16px;font-weight:300;line-height:1.9;margin-bottom:18px;}
+.about-text p strong{color:var(--white);font-weight:500;}
+.quote-box{background:var(--card);border:1px solid var(--border);padding:44px;position:relative;transform-style:preserve-3d;transition:transform .4s ease;}
+.quote-box:hover{transform:perspective(800px) rotateX(3deg) rotateY(-3deg);}
+.quote-box::before{content:'';position:absolute;top:-1px;left:24px;right:24px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.quote-box::after{content:'';position:absolute;bottom:-1px;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,var(--teal),transparent);}
+.quote-mark{font-family:'Bebas Neue',sans-serif;font-size:96px;color:rgba(212,160,23,.1);line-height:1;margin-bottom:16px;}
+.quote-box p{font-style:italic;font-weight:300;color:var(--muted);font-size:16px;line-height:1.8;}
+.quote-sig{margin-top:24px;font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);}
+
+/* ── VISION ── */
+.vision-wrap{background:var(--dark);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:100px 0;}
+.vision-inner{max-width:1140px;margin:0 auto;padding:0 48px;}
+.vision-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:0;}
+@media(max-width:900px){.vision-cards{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:540px){.vision-cards{grid-template-columns:1fr;}}
+.vc{background:var(--card);border:1px solid var(--border);padding:36px 28px;position:relative;overflow:hidden;transition:all .35s ease;transform-style:preserve-3d;cursor:none;}
+.vc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold);transform:scaleX(0);transform-origin:left;transition:transform .35s ease;}
+.vc:hover{transform:perspective(600px) translateY(-6px) rotateX(4deg);border-color:rgba(212,160,23,.3);box-shadow:0 24px 48px rgba(0,0,0,.4),0 0 0 1px rgba(212,160,23,.1);}
+.vc:hover::before{transform:scaleX(1);}
+.vc-num{font-family:'Bebas Neue',sans-serif;font-size:56px;color:rgba(212,160,23,.1);line-height:1;margin-bottom:20px;}
+.vc h4{font-family:'Barlow Condensed',sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+.vc p{color:var(--muted);font-size:14px;font-weight:300;line-height:1.8;}
+
+/* ── PRODUCTS ── */
+.products-grid{display:flex;flex-direction:column;gap:32px;}
+.product-card{background:var(--card);border:1px solid var(--border);display:grid;grid-template-columns:1.2fr 1fr;overflow:hidden;position:relative;transition:all .4s ease;transform-style:preserve-3d;cursor:none;}
+.product-card:hover{transform:perspective(1000px) rotateY(-2deg) rotateX(1deg);border-color:rgba(212,160,23,.4);box-shadow:0 32px 64px rgba(0,0,0,.5),0 0 0 1px rgba(212,160,23,.12);}
+.product-card::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:linear-gradient(to bottom,var(--gold),var(--teal));transform:scaleY(0);transform-origin:top;transition:transform .4s ease;}
+.product-card:hover::before{transform:scaleY(1);}
+@media(max-width:700px){.product-card{grid-template-columns:1fr;}}
+.prod-info{padding:52px 48px;}
+.prod-badge{display:inline-block;font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.25);color:var(--gold);padding:5px 14px;margin-bottom:20px;}
+.prod-info h3{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:2px;line-height:1;margin-bottom:8px;}
+.prod-info h3 span{color:var(--gold);}
+.prod-domain{font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--teal);margin-bottom:20px;}
+.prod-info p{color:var(--muted);font-size:15px;font-weight:300;line-height:1.8;margin-bottom:24px;max-width:420px;}
+.prod-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px;}
+.ptag{font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);padding:5px 12px;}
+.prod-visual{background:var(--dark);display:flex;align-items:center;justify-content:center;padding:48px;border-left:1px solid var(--border);position:relative;overflow:hidden;}
+.prod-visual::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(212,160,23,.06),transparent 70%);}
+.prod-logo-3d{font-family:'Bebas Neue',sans-serif;text-align:center;transform-style:preserve-3d;animation:floatLogo 5s ease-in-out infinite;}
+@keyframes floatLogo{0%,100%{transform:translateY(0) rotateY(0deg);}50%{transform:translateY(-12px) rotateY(8deg);}}
+.prod-logo-3d .big{font-size:68px;letter-spacing:8px;color:var(--white);line-height:1;text-shadow:0 0 40px rgba(212,160,23,.3);}
+.prod-logo-3d .sub{font-size:12px;letter-spacing:6px;color:var(--gold);margin-top:6px;}
+.prod-logo-3d .dot{color:var(--gold);}
+
+/* igena yamu card */
+.igena-card .prod-visual{background:linear-gradient(135deg,#0a0520,#031a15);}
+.igena-card .prod-visual::before{background:radial-gradient(ellipse at center,rgba(13,148,136,.08),transparent 70%);}
+.igena-card .prod-logo-3d .big{color:#a78bfa;text-shadow:0 0 40px rgba(108,63,212,.3);}
+.igena-card .prod-logo-3d .sub{color:#0d9488;}
+
+/* sellify card */
+.sellify-card .prod-visual::before{background:radial-gradient(ellipse at center,rgba(192,57,43,.07),transparent 70%);}
+.sellify-card .prod-logo-3d .big{color:var(--white);}
+.sellify-card .prod-logo-3d .sub{color:var(--red);}
+
+/* ── CONTACT ── */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:600px){.contact-grid{grid-template-columns:1fr;}}
+.contact-item{background:var(--card);border:1px solid var(--border);padding:28px;display:flex;align-items:center;gap:18px;transition:all .3s;transform-style:preserve-3d;}
+.contact-item:hover{transform:perspective(600px) rotateX(3deg);border-color:rgba(212,160,23,.3);box-shadow:0 16px 32px rgba(0,0,0,.3);}
+.ci-icon{width:48px;height:48px;background:var(--gold3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.ci-info h4{font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--white);margin-bottom:4px;}
+.ci-info a{font-size:14px;color:var(--teal);text-decoration:none;transition:color .2s;}
+.ci-info a:hover{color:var(--gold);}
+
+/* ── SOCIAL ── */
+.social-wrap{background:var(--dark);border-top:1px solid var(--border);padding:100px 48px;}
+.social-inner{max-width:1140px;margin:0 auto;}
+.social-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:0;}
+@media(max-width:700px){.social-grid{grid-template-columns:1fr 1fr;}}
+.social-card{background:var(--card);border:1px solid var(--border);padding:28px 24px;display:flex;align-items:center;gap:16px;text-decoration:none;color:inherit;transition:all .3s;transform-style:preserve-3d;cursor:none;}
+.social-card:hover{transform:perspective(600px) rotateY(-4deg) translateY(-4px);border-color:rgba(212,160,23,.3);box-shadow:0 20px 40px rgba(0,0,0,.3);}
+.sc-icon{font-size:28px;width:44px;text-align:center;}
+.sc-platform{font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--white);}
+.sc-handle{font-size:13px;color:var(--muted);}
+
+/* ── FOOTER ── */
+footer{background:var(--black);border-top:1px solid var(--border);padding:48px;text-align:center;position:relative;z-index:2;}
+footer::before{content:'';position:absolute;top:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.footer-logo{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:6px;margin-bottom:12px;}
+.footer-logo span{color:var(--gold);}
+footer p{font-size:13px;color:var(--muted);line-height:2;}
+footer p span{color:var(--gold);}
+.footer-flag{font-size:20px;}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.reveal{opacity:0;transform:translateY(32px);transition:opacity .8s ease,transform .8s ease;}
+.reveal.on{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- THREE.JS CANVAS -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- CURSOR -->
+<div class="cursor" id="cursor">
+  <div class="cur-ring" id="curRing"></div>
+  <div class="cur-dot" id="curDot"></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">Raw<span>Techies</span></a>
+  <div class="nav-links">
+    <a href="#about">About</a>
+    <a href="#build">Products</a>
+    <a href="#contact">Contact</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Sri Lanka Digital Company · Est. 2026</div>
+  <h1>Raw<span class="line-gold">Techies</span><span class="line-muted">Building Digital Sri Lanka</span></h1>
+  <p class="hero-desc">We build <strong>powerful digital platforms</strong> that connect, inform, and empower Sri Lankans — from news and classifieds to education and beyond.</p>
+  <div class="hero-cta">
+    <a href="#build" class="btn-gold">See What We Build</a>
+    <a href="#contact" class="btn-wire">Get In Touch</a>
+  </div>
+  <div class="hero-scroll">Scroll</div>
+
+  <!-- 3D ROTATING BADGE -->
+  <div class="hero-badge-3d">
+    <div class="badge-inner">
+      <div class="badge-face">
+        <div class="big">RAW</div>
+        <div class="sub">Techies · 🇱🇰</div>
+        <div class="big" style="color:var(--teal);margin-top:4px">LK</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="num">12.4M</div><div class="lbl">Internet Users in Sri Lanka</div></div>
+  <div class="stat-item"><div class="num">3</div><div class="lbl">Platforms Building</div></div>
+  <div class="stat-item"><div class="num">2,886</div><div class="lbl">Free Education Games</div></div>
+  <div class="stat-item"><div class="num">2026</div><div class="lbl">Year Founded</div></div>
+</div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="reveal">
+    <div class="sec-tag">Who We Are</div>
+    <div class="sec-title">Built <span>Raw.</span><br>Built Real.</div>
+    <div class="gold-bar"></div>
+  </div>
+  <div class="about-grid reveal">
+    <div class="about-text">
+      <p><strong>RawTechies</strong> is a Sri Lanka-based digital company with one mission — to build platforms that truly serve Sri Lankans in their daily lives.</p>
+      <p>We believe the Sri Lankan internet user deserves <strong>fast, relevant, local-first content</strong> — from breaking news and live exchange rates to free education and classifieds.</p>
+      <p>We are a lean, focused team that moves fast, builds bold, and delivers real value to real people. No corporate fluff. Just raw, honest digital work.</p>
+    </div>
+    <div class="quote-box">
+      <div class="quote-mark">"</div>
+      <p>The best technology is the kind that disappears — it just works, and people's lives get better because of it.</p>
+      <div class="quote-sig">— RawTechies Philosophy</div>
+    </div>
+  </div>
+</section>
+
+<!-- VISION -->
+<div class="vision-wrap">
+  <div class="vision-inner">
+    <div class="reveal">
+      <div class="sec-tag">Vision & Mission</div>
+      <div class="sec-title">Why We <span>Exist</span></div>
+      <div class="gold-bar"></div>
+    </div>
+    <div class="vision-cards reveal">
+      <div class="vc"><div class="vc-num">01</div><h4>Vision</h4><p>Sri Lanka's most trusted and widely used digital network — accessible to every Sri Lankan, on every device.</p></div>
+      <div class="vc"><div class="vc-num">02</div><h4>Mission</h4><p>Build local-first digital platforms connecting Sri Lankans with news, education, jobs, and services they need every day.</p></div>
+      <div class="vc"><div class="vc-num">03</div><h4>Values</h4><p>Honesty in content. Speed in delivery. Respect for every reader. We never compromise on accuracy. We never stop building.</p></div>
+      <div class="vc"><div class="vc-num">04</div><h4>Promise</h4><p>Every platform we build will be free to access, fast to load, and genuinely useful — not just a website, but a daily destination.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTS -->
+<section id="build" style="max-width:1140px">
+  <div class="reveal">
+    <div class="sec-tag">What We Build</div>
+    <div class="sec-title">Our <span>Platforms</span></div>
+    <div class="gold-bar"></div>
+  </div>
+
+  <div class="products-grid reveal">
+
+    <!-- DIVIHUB -->
+    <div class="product-card">
+      <div class="prod-info">
+        <div class="prod-badge">🚀 Launching 2026</div>
+        <h3>Divi<span>Hub</span></h3>
+        <div class="prod-domain">divihub.lk</div>
+        <p>Sri Lanka's first true all-in-one digital portal — delivering Sinhala-language news, live exchange rates, cricket scores, job listings, real estate, health information, and more in one fast, mobile-first platform.</p>
+        <div class="prod-tags">
+          <span class="ptag">News</span><span class="ptag">Finance</span><span class="ptag">Sports</span><span class="ptag">Jobs</span><span class="ptag">Health</span><span class="ptag">Real Estate</span><span class="ptag">Tourism</span><span class="ptag">Classifieds</span>
+        </div>
+        <a href="https://divihub.lk" class="btn-gold">Visit DiviHub →</a>
+      </div>
+      <div class="prod-visual">
+        <div class="prod-logo-3d">
+          <div class="big">DIVI<br>HUB</div>
+          <div class="sub">. L K</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IGENA YAMU -->
+    <div class="product-card igena-card">
+      <div class="prod-info">
+        <div class="prod-badge" style="color:#a78bfa;border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.08)">📚 Live Now</div>
+        <h3>Igena <span style="color:#a78bfa">Yamu</span></h3>
+        <div class="prod-domain" style="color:#0d9488">igenayamu.lk</div>
+        <p>Sri Lanka's first free Grade 1–12 education platform. Interactive games in Sinhala, Tamil, and English. 962 lessons, 2,886 games. Free forever for every Sri Lankan child.</p>
+        <div class="prod-tags">
+          <span class="ptag">Grade 1-12</span><span class="ptag">Sinhala</span><span class="ptag">Tamil</span><span class="ptag">English</span><span class="ptag">Games</span><span class="ptag">Certificates</span>
+        </div>
+        <a href="https://igenayamu.lk" class="btn-gold" style="background:#6c3fd4;">Visit Igena Yamu →</a>
+      </div>
+      <div class="prod-visual">
+        <div class="prod-logo-3d">
+          <div class="big">ඉගෙන<br>යමු</div>
+          <div class="sub">. L K</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SELLIFY -->
+    <div class="product-card sellify-card">
+      <div class="prod-info">
+        <div class="prod-badge" style="color:#e05555;border-color:rgba(192,57,43,.3);background:rgba(192,57,43,.08)">🛒 In Development</div>
+        <h3>Sell<span style="color:var(--red)">ify</span></h3>
+        <div class="prod-domain" style="color:var(--red)">sellify.lk</div>
+        <p>Sri Lanka's modern classifieds marketplace. Buy and sell anything — vehicles, electronics, property, jobs — with a fast, mobile-first experience built for Sri Lankans.</p>
+        <div class="prod-tags">
+          <span class="ptag">Classifieds</span><span class="ptag">Vehicles</span><span class="ptag">Property</span><span class="ptag">Electronics</span><span class="ptag">Jobs</span><span class="ptag">LKR</span>
+        </div>
+        <a href="https://sellify.lk" class="btn-gold" style="background:var(--red);">Visit Sellify →</a>
+      </div>
+      <div class="prod-visual">
+        <div class="prod-logo-3d">
+          <div class="big">SELL<br>IFY</div>
+          <div class="sub">. L K</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="reveal">
+    <div class="sec-tag">Contact</div>
+    <div class="sec-title">Get In <span>Touch</span></div>
+    <div class="gold-bar"></div>
+  </div>
+  <div class="contact-grid reveal">
+    <div class="contact-item"><div class="ci-icon">✉️</div><div class="ci-info"><h4>General</h4><a href="mailto:hello@rawtechies.com">hello@rawtechies.com</a></div></div>
+    <div class="contact-item"><div class="ci-icon">📢</div><div class="ci-info"><h4>Advertising</h4><a href="mailto:ads@divihub.lk">ads@divihub.lk</a></div></div>
+    <div class="contact-item"><div class="ci-icon">✍️</div><div class="ci-info"><h4>Editorial</h4><a href="mailto:editor@divihub.lk">editor@divihub.lk</a></div></div>
+    <div class="contact-item"><div class="ci-icon">🛠️</div><div class="ci-info"><h4>Support</h4><a href="mailto:support@rawtechies.com">support@rawtechies.com</a></div></div>
+  </div>
+</section>
+
+<!-- SOCIAL -->
+<div class="social-wrap">
+  <div class="social-inner">
+    <div class="reveal">
+      <div class="sec-tag">Follow Us</div>
+      <div class="sec-title">Find Us <span>Everywhere</span></div>
+      <div class="gold-bar"></div>
+    </div>
+    <div class="social-grid reveal">
+      <a href="https://facebook.com/DiviHub"    class="social-card" target="_blank"><div class="sc-icon">📘</div><div><div class="sc-platform">Facebook</div><div class="sc-handle">/DiviHub</div></div></a>
+      <a href="https://instagram.com/DiviHub"   class="social-card" target="_blank"><div class="sc-icon">📸</div><div><div class="sc-platform">Instagram</div><div class="sc-handle">@DiviHub</div></div></a>
+      <a href="https://youtube.com/@DiviHub"    class="social-card" target="_blank"><div class="sc-icon">▶️</div><div><div class="sc-platform">YouTube</div><div class="sc-handle">@DiviHub</div></div></a>
+      <a href="#"                               class="social-card" target="_blank"><div class="sc-icon">💬</div><div><div class="sc-platform">WhatsApp</div><div class="sc-handle">DiviHub Channel</div></div></a>
+      <a href="https://linkedin.com/company/RawTechies" class="social-card" target="_blank"><div class="sc-icon">💼</div><div><div class="sc-platform">LinkedIn</div><div class="sc-handle">/RawTechies</div></div></a>
+      <a href="https://twitter.com/DiviHub"     class="social-card" target="_blank"><div class="sc-icon">🐦</div><div><div class="sc-platform">Twitter / X</div><div class="sc-handle">@DiviHub</div></div></a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Raw<span>Techies</span></div>
+  <p>© 2026 RawTechies. Proudly built in <span>🇱🇰 Sri Lanka</span>.</p>
+  <p style="font-size:11px;color:#333;margin-top:6px;">Powering DiviHub.lk · igenayamu.lk · Sellify.lk</p>
+</footer>
+
+<!-- THREE.JS 3D PARTICLE FIELD -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.z = 80;
+
+  // ── PARTICLE FIELD ──
+  const count   = 1800;
+  const geom    = new THREE.BufferGeometry();
+  const pos     = new Float32Array(count * 3);
+  const colors  = new Float32Array(count * 3);
+  const sizes   = new Float32Array(count);
+
+  const goldCol = new THREE.Color('#d4a017');
+  const tealCol = new THREE.Color('#0e7c7b');
+  const dimCol  = new THREE.Color('#1e1e28');
+
+  for(let i=0; i<count; i++){
+    const i3 = i*3;
+    pos[i3]   = (Math.random()-0.5)*200;
+    pos[i3+1] = (Math.random()-0.5)*200;
+    pos[i3+2] = (Math.random()-0.5)*200;
+
+    const t = Math.random();
+    const c = t < 0.06 ? goldCol : t < 0.1 ? tealCol : dimCol;
+    colors[i3]   = c.r;
+    colors[i3+1] = c.g;
+    colors[i3+2] = c.b;
+    sizes[i] = t < 0.06 ? 2.4 : t < 0.1 ? 2.0 : 1.2;
+  }
+
+  geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geom.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+  geom.setAttribute('size',     new THREE.BufferAttribute(sizes, 1));
+
+  const mat = new THREE.PointsMaterial({
+    size: 1.6,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.85,
+    sizeAttenuation: true,
+  });
+
+  const particles = new THREE.Points(geom, mat);
+  scene.add(particles);
+
+  // ── WIREFRAME GRID PLANES ──
+  const gridMat = new THREE.LineBasicMaterial({ color: 0x1e1e28, transparent: true, opacity: 0.35 });
+  function makeGrid(size, divs, rot){
+    const g = new THREE.GridHelper(size, divs, 0x1e1e28, 0x1e1e28);
+    g.material.transparent = true;
+    g.material.opacity = 0.2;
+    if(rot) g.rotation.x = rot;
+    return g;
+  }
+  const grid1 = makeGrid(200, 20, 0);
+  grid1.position.y = -60;
+  scene.add(grid1);
+
+  // ── FLOATING GEOMETRIC SHAPES ──
+  const shapes = [];
+  const shapeGeo = [
+    new THREE.OctahedronGeometry(3, 0),
+    new THREE.TetrahedronGeometry(3.5, 0),
+    new THREE.IcosahedronGeometry(2.8, 0),
+  ];
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0xd4a017, wireframe: true, transparent: true, opacity: 0.15 });
+  const wireMat2 = new THREE.MeshBasicMaterial({ color: 0x0e7c7b, wireframe: true, transparent: true, opacity: 0.12 });
+
+  for(let i=0; i<6; i++){
+    const geo  = shapeGeo[i % 3];
+    const mesh = new THREE.Mesh(geo, i%2===0 ? wireMat : wireMat2);
+    mesh.position.set(
+      (Math.random()-0.5)*120,
+      (Math.random()-0.5)*100,
+      (Math.random()-0.5)*60 - 20
+    );
+    mesh.userData = {
+      rotX: (Math.random()-0.5)*0.008,
+      rotY: (Math.random()-0.5)*0.008,
+      floatSpeed: 0.4 + Math.random()*0.6,
+      floatPhase: Math.random()*Math.PI*2,
+      baseY: mesh.position.y,
+    };
+    scene.add(mesh);
+    shapes.push(mesh);
+  }
+
+  // ── MOUSE PARALLAX ──
+  let mouseX = 0, mouseY = 0;
+  let targetX = 0, targetY = 0;
+  document.addEventListener('mousemove', e => {
+    mouseX = (e.clientX/window.innerWidth - 0.5) * 2;
+    mouseY = (e.clientY/window.innerHeight - 0.5) * 2;
+  });
+
+  // ── SCROLL PARALLAX ──
+  let scrollY = 0;
+  window.addEventListener('scroll', () => { scrollY = window.scrollY; });
+
+  // ── ANIMATE ──
+  const clock = new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+
+    targetX += (mouseX - targetX) * 0.04;
+    targetY += (mouseY - targetY) * 0.04;
+
+    particles.rotation.y = t * 0.018 + targetX * 0.3;
+    particles.rotation.x = targetY * 0.15;
+    particles.position.y = -scrollY * 0.025;
+
+    shapes.forEach(s => {
+      s.rotation.x += s.userData.rotX;
+      s.rotation.y += s.userData.rotY;
+      s.position.y = s.userData.baseY + Math.sin(t*s.userData.floatSpeed + s.userData.floatPhase)*4;
+    });
+
+    grid1.position.y = -60 - scrollY * 0.02;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+
+// ── CUSTOM CURSOR ──
+const dot  = document.getElementById('curDot');
+const ring = document.getElementById('curRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e=>{
+  mx=e.clientX; my=e.clientY;
+  dot.style.cssText=`left:${mx}px;top:${my}px;`;
+});
+function animRing(){
+  rx+=(mx-rx)*0.1; ry+=(my-ry)*0.1;
+  ring.style.cssText=`left:${rx}px;top:${ry}px;`;
+  requestAnimationFrame(animRing);
+}
+animRing();
+document.querySelectorAll('a,button,.vc,.product-card,.social-card,.contact-item').forEach(el=>{
+  el.addEventListener('mouseenter',()=>ring.classList.add('big'));
+  el.addEventListener('mouseleave',()=>ring.classList.remove('big'));
+});
+
+// ── SCROLL REVEAL ──
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach((e,i)=>{ if(e.isIntersecting) setTimeout(()=>e.target.classList.add('on'), i*80); });
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(r=>obs.observe(r));
+
+// ── 3D CARD TILT ON MOUSE ──
+document.querySelectorAll('.product-card,.vc,.quote-box,.contact-item').forEach(card=>{
+  card.addEventListener('mousemove', e=>{
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX-r.left)/r.width  - 0.5;
+    const y = (e.clientY-r.top) /r.height - 0.5;
+    card.style.transform=`perspective(800px) rotateY(${x*10}deg) rotateX(${-y*6}deg) translateY(-4px)`;
+  });
+  card.addEventListener('mouseleave', ()=>{
+    card.style.transform='';
+  });
+});
+</script>
+</body>
+</html>
